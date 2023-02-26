@@ -2,23 +2,24 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
-    jest: true,
+    jest: true
   },
   extends: [
     'plugin:@typescript-eslint/recommended',
     'plugin:promise/recommended',
     'plugin:prettier/recommended',
-    'prettier',
+    'prettier'
   ],
   parser: '@typescript-eslint/parser',
   overrides: [],
   parserOptions: {
     ecmaVersion: 'latest',
-    sourceType: 'module',
+    sourceType: 'module'
   },
   plugins: ['@typescript-eslint', 'prettier', 'promise', 'import'],
+  ignorePatterns: ['**/prisma/generated'],
   rules: {
-    'prettier/prettier': ['error', { endOfLine: 'auto' }],
+    'prettier/prettier': ['error', { endOfLine: 'auto', trailingComma: 'none' }],
     '@typescript-eslint/interface-name-prefix': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
@@ -26,16 +27,19 @@ module.exports = {
     '@typescript-eslint/no-empty-interface': [
       'error',
       {
-        allowSingleExtends: true,
-      },
+        allowSingleExtends: true
+      }
     ],
     'prefer-const': ['error', { ignoreReadBeforeAssign: true }],
     'padding-line-between-statements': [
       'error',
       { blankLine: 'always', prev: ['*'], next: ['*'] },
-      { blankLine: 'any', prev: ['import'], next: ['*'] },
-      { blankLine: 'always', prev: ['import'], next: '*' },
+      { blankLine: 'always', prev: ['import', 'export'], next: ['*'] },
+      { blankLine: 'any', prev: ['export'], next: ['export', 'empty'] },
+      { blankLine: 'always', prev: 'directive', next: '*' },
+      { blankLine: 'any', prev: 'directive', next: 'directive' }
     ],
+    'promise/always-return': 'off'
     // 'import/order': [
     //   'error',
     //   {
@@ -61,13 +65,13 @@ module.exports = {
   },
   settings: {
     'import/parsers': {
-      '@typescript-eslint/parser': ['.ts', '.tsx'],
+      '@typescript-eslint/parser': ['.ts', '.tsx']
     },
     'import/resolver': {
       typescript: {
         alwaysTryTypes: true,
-        project: './tsconfig.json',
-      },
-    },
-  },
+        project: './tsconfig.json'
+      }
+    }
+  }
 }

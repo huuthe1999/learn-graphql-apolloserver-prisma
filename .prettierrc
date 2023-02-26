@@ -5,7 +5,8 @@
   "embeddedLanguageFormatting": "auto",
   "htmlWhitespaceSensitivity": "css",
   "insertPragma": false,
-  "jsxSingleQuote": false,
+  "jsxSingleQuote": true,
+  "jsxBracketSameLine": true,
   "printWidth": 100,
   "proseWrap": "preserve",
   "quoteProps": "as-needed",
@@ -13,7 +14,7 @@
   "semi": false,
   "singleQuote": true,
   "tabWidth": 2,
-  "trailingComma": "all",
+  "trailingComma": "none",
   "useTabs": false,
   "vueIndentScriptAndStyle": false
 }

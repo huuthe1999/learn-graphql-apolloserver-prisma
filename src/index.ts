@@ -4,11 +4,9 @@ import 'reflect-metadata'
 
 import { ApolloServer } from '@apollo/server'
 
-import { UserResolver } from '@resolvers'
-
 import dotenv from 'dotenv-safe'
 
-import express, { Express } from 'express'
+import express, { Express, Request } from 'express'
 
 import http from 'http'
 
@@ -24,6 +22,10 @@ import { MyContext } from '@types'
 
 import { expressMiddleware } from '@apollo/server/express4'
 
+import { prismaClient } from '@utils'
+
+import { resolvers } from '@generated/type-graphql'
+
 dotenv.config({ allowEmptyValues: true })
 
 const main = async () => {
@@ -33,9 +35,10 @@ const main = async () => {
 
   const apolloServer = new ApolloServer<MyContext>({
     schema: await buildSchema({
-      resolvers: [UserResolver],
+      resolvers,
+      validate: false
     }),
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })]
   })
 
   await apolloServer.start()
@@ -44,17 +47,21 @@ const main = async () => {
     '/',
     cors<cors.CorsRequest>(),
     bodyParser.json(),
-    // expressMiddleware accepts the same arguments:
-    // an Apollo Server instance and optional configuration options
     expressMiddleware(apolloServer, {
-      context: async ({ req }) => ({ token: req.headers.token }),
-    }),
+      context: async ({ req }: { req: Request }) => ({
+        token: req.headers.token,
+        prisma: prismaClient
+      })
+    })
   )
 
-  // Modified server startup
-  await new Promise<void>((resolve) => httpServer.listen({ port: 4000 }, resolve))
+  const PORT = process.env.PORT || 4000
 
-  console.log(`🚀 Server ready at http://localhost:4000/`)
+  await new Promise<void>((resolve) => httpServer.listen({ port: PORT }, resolve))
+
+  console.log(`🚀 Server ready at http://localhost:${PORT}`)
 }
 
-main().catch((error) => console.log(error))
+main().catch(async (error) => {
+  console.log(error)
+})

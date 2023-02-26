@@ -1,2 +1,4 @@
 node_modules
 !.eslintrc.js
+**/*.d.ts
+prisma/generated/type-graphql/**/*.{js,ts}
