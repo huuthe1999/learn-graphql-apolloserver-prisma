@@ -1,12 +1,12 @@
 import { Arg, Ctx, Mutation, Resolver } from 'type-graphql'
 
-import { User } from '@generated'
-
-import { CustomUserCreateInput, MyContext } from '@types'
+import { CustomUserCreateInput, MyContext, TypeError, UserMutationResponse } from '@types'
 
 import argon2 from 'argon2'
 
-import { GraphQLError } from 'graphql'
+import { validate } from 'class-validator'
+
+import { flattenErrors } from '@utils'
 
 // import { validate } from 'class-validator'
 
@@ -15,36 +15,31 @@ import { GraphQLError } from 'graphql'
 // Generate resolver type-graphql with prisma
 @Resolver()
 export class UserResolver {
-  @Mutation(_returns => User, {
+  @Mutation(_returns => UserMutationResponse, {
     nullable: true
   })
   async createNewUser(
-    @Arg('data', { validate: true })
+    // @Arg('data', { validate: true })
+    @Arg('data')
     newUserData: CustomUserCreateInput,
     @Ctx() { prisma }: MyContext
-  ): Promise<User | null> {
+  ): Promise<UserMutationResponse> {
     // Validate input data
-    // const errors = await validate(newUserData, {
-    //   validationError: {
-    //     target: false
-    //   }
-    // })
+    const errors = await validate(newUserData, {
+      validationError: {
+        target: false
+      }
+    })
 
-    // if (errors.length > 0) {
-    //   throw new GraphQLError('Validation failed!', {
-    //     extensions: {
-    //       code: ApolloServerErrorCode.BAD_USER_INPUT,
-    //       validationErrors: errors,
-    //       http: {
-    //         status: 400
-    //         // headers: new Map([
-    //         //   ['some-header', 'it was bad'],
-    //         //   ['another-header', 'seriously']
-    //         // ])
-    //       }
-    //     }
-    //   })
-    // }
+    if (errors.length > 0) {
+      return {
+        isSuccess: false,
+        status: 400,
+        message: 'Validation failed!',
+        typeError: TypeError.INPUT,
+        errors: flattenErrors(errors)
+      }
+    }
 
     try {
       const existingUser = await prisma.user.findFirst({
@@ -64,19 +59,35 @@ export class UserResolver {
         }
       })
 
-      if (existingUser !== null) throw new GraphQLError('User existed')
+      if (existingUser !== null)
+        return {
+          isSuccess: false,
+          status: 400,
+          message: 'User existed!',
+          typeError: TypeError.SERVER,
+          errors: [
+            {
+              field: existingUser.username === newUserData.username ? 'username' : 'email',
+              message: `${
+                existingUser.username === newUserData.username ? 'Username' : 'Email'
+              } already taken`
+            }
+          ]
+        }
 
       const hashedPassword = await argon2.hash(newUserData.password)
 
-      return await prisma.user.create({
-        data: {
-          ...newUserData,
-          password: hashedPassword
-        }
-      })
+      return {
+        isSuccess: true,
+        status: 200,
+        user: await prisma.user.create({
+          data: {
+            ...newUserData,
+            password: hashedPassword
+          }
+        })
+      }
     } catch (error) {
-      console.log(error)
-
       throw error
     }
   }
