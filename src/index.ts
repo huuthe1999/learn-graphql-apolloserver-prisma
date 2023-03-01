@@ -18,27 +18,45 @@ import { buildSchema } from 'type-graphql'
 
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer'
 
-import { MyContext } from '@types'
-
 import { expressMiddleware } from '@apollo/server/express4'
 
-import { prismaClient } from '@utils'
+import { myFormatError, prismaClient } from '@utils'
 
-import { resolvers } from '@generated/type-graphql'
+import { resolvers } from '@generated'
+
+import { UserResolver } from '@resolvers'
 
 dotenv.config({ allowEmptyValues: true })
+
+const setHttpPlugin = {
+  requestDidStart() {
+    return {
+      didEncounterErrors({ response, errors }: { response: any; errors: any }) {
+        console.log(response, errors)
+      }
+    }
+  }
+}
 
 const main = async () => {
   const app: Express = express()
 
   const httpServer = http.createServer(app)
 
-  const apolloServer = new ApolloServer<MyContext>({
+  const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers,
+      resolvers: [...resolvers, UserResolver],
       validate: false
+      // orphanedTypes:[]
+      // validate: argValue => {
+      //   validateOrReject(argValue!).catch(errors => {
+      //     console.log('Promise rejected (validation failed). Errors: ', errors)
+      //   })
+      // }
     }),
-    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })]
+    plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+    formatError: myFormatError,
+    includeStacktraceInErrorResponses: process.env.NODE_ENV === 'development'
   })
 
   await apolloServer.start()
@@ -57,11 +75,11 @@ const main = async () => {
 
   const PORT = process.env.PORT || 4000
 
-  await new Promise<void>((resolve) => httpServer.listen({ port: PORT }, resolve))
+  await new Promise<void>(resolve => httpServer.listen({ port: PORT }, resolve))
 
   console.log(`🚀 Server ready at http://localhost:${PORT}`)
 }
 
-main().catch(async (error) => {
+main().catch(async error => {
   console.log(error)
 })

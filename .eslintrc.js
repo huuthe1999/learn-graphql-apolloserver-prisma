@@ -17,7 +17,7 @@ module.exports = {
     sourceType: 'module'
   },
   plugins: ['@typescript-eslint', 'prettier', 'promise', 'import'],
-  ignorePatterns: ['**/prisma/generated'],
+  ignorePatterns: ['**/prisma/generated/type-graphql'],
   rules: {
     'prettier/prettier': ['error', { endOfLine: 'auto', trailingComma: 'none' }],
     '@typescript-eslint/interface-name-prefix': 'off',

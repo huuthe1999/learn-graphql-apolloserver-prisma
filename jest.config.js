@@ -10,10 +10,10 @@ module.exports = {
       branches: 100,
       functions: 100,
       lines: 100,
-      statements: 100,
-    },
+      statements: 100
+    }
   },
   verbose: true,
   moduleDirectories: ['node_modules', 'src'],
-  setupFiles: ['dotenv/config'],
+  setupFiles: ['dotenv/config']
 }
