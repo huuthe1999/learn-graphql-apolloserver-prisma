@@ -1,4 +1,4 @@
-import { Field, Int, InterfaceType, ObjectType, registerEnumType } from 'type-graphql'
+import { Field, Int, InterfaceType, ObjectType } from 'type-graphql'
 
 import { User } from '@generated'
 
@@ -23,15 +23,6 @@ export class FieldError {
   message!: string
 }
 
-export enum TypeError {
-  INPUT = 1,
-  SERVER = 2
-}
-
-registerEnumType(TypeError, {
-  name: 'TypeError' // this one is mandatory
-})
-
 @ObjectType({ implements: IMutationResponse })
 export class UserMutationResponse implements IMutationResponse {
   @Field(_type => Int)
@@ -42,9 +33,6 @@ export class UserMutationResponse implements IMutationResponse {
 
   @Field()
   message?: string
-
-  @Field(_type => TypeError, { nullable: true })
-  typeError?: TypeError //1: Validated Input ; 2:Server error
 
   @Field({ nullable: true })
   user?: User

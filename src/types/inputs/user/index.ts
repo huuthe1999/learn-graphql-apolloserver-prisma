@@ -19,3 +19,12 @@ export class CustomUserCreateInput extends UserCreateInput {
   @MinLength(8)
   password!: string
 }
+
+@InputType()
+export class UserLoginInput {
+  @Field()
+  username!: string
+
+  @Field()
+  password!: string
+}

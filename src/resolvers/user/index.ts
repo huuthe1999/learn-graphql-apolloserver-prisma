@@ -1,10 +1,12 @@
 import { Arg, Ctx, Mutation, Resolver } from 'type-graphql'
 
-import { CustomUserCreateInput, MyContext, TypeError, UserMutationResponse } from '@types'
+import { CustomUserCreateInput, MyContext, UserLoginInput, UserMutationResponse } from '@types'
 
 import argon2 from 'argon2'
 
 import { validate } from 'class-validator'
+
+import { Prisma } from '@prisma/client'
 
 import { flattenErrors } from '@utils'
 
@@ -36,7 +38,6 @@ export class UserResolver {
         isSuccess: false,
         status: 400,
         message: 'Validation failed!',
-        typeError: TypeError.INPUT,
         errors: flattenErrors(errors)
       }
     }
@@ -62,9 +63,8 @@ export class UserResolver {
       if (existingUser !== null)
         return {
           isSuccess: false,
-          status: 400,
+          status: 409,
           message: 'User existed!',
-          typeError: TypeError.SERVER,
           errors: [
             {
               field: existingUser.username === newUserData.username ? 'username' : 'email',
@@ -80,6 +80,7 @@ export class UserResolver {
       return {
         isSuccess: true,
         status: 200,
+        message: 'Create User Successful',
         user: await prisma.user.create({
           data: {
             ...newUserData,
@@ -89,6 +90,67 @@ export class UserResolver {
       }
     } catch (error) {
       throw error
+    }
+  }
+
+  @Mutation(_return => UserMutationResponse)
+  async loginUser(
+    @Arg('data')
+    { username, password }: UserLoginInput,
+    @Ctx() { prisma }: MyContext
+  ): Promise<UserMutationResponse> {
+    const usernameIsEmail = username.includes('@')
+
+    try {
+      const existingUser = await prisma.user.findFirstOrThrow({
+        where: usernameIsEmail
+          ? {
+              email: username
+            }
+          : {
+              username
+            }
+      })
+
+      const isPasswordValid = await argon2.verify(existingUser.password, password)
+
+      if (isPasswordValid)
+        return {
+          isSuccess: true,
+          status: 200,
+          user: existingUser,
+          message: 'Successful'
+        }
+
+      return {
+        isSuccess: false,
+        status: 404,
+        message: 'Authenticated failed',
+        errors: [
+          {
+            field: 'username',
+            message: 'Username or password invalid'
+          },
+          {
+            field: 'password',
+            message: 'Username or password invalid'
+          }
+        ]
+      }
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        return {
+          isSuccess: false,
+          status: 500,
+          message: e.message
+        }
+      }
+
+      return {
+        isSuccess: false,
+        status: 500,
+        message: 'Something went wrong'
+      }
     }
   }
 }
