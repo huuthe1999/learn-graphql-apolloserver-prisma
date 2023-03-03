@@ -1,8 +1,9 @@
-import { BaseContext } from '@apollo/server'
-
 import { prismaClient } from '@utils'
 
-export interface MyContext extends BaseContext {
-  token: string
+import { Request, Response } from 'express'
+
+export interface MyContext {
   prisma: typeof prismaClient
+  req: Request
+  res: Response
 }

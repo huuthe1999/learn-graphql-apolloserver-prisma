@@ -41,10 +41,11 @@
       "@utils": ["src/utils"],
       "@resolvers": ["src/resolvers"],
       "@types": ["src/types"],
-      "@generated":["prisma/generated/type-graphql"]
+      "@generated": ["prisma/generated/type-graphql"],
+      "@constants": ["src/constants"]
     } /* Specify a set of entries that re-map imports to additional lookup locations. */,
     // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
-    // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */
+    // "typeRoots": [] /* Specify multiple folders that act like './node_modules/@types'. */,
     "types": [
       "node",
       "jest"
@@ -116,6 +117,7 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
+  "files": ["types/express-session/index.d.ts"],
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "coverage", "__tests__", "dist", ".vscode"]
 }

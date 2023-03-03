@@ -1,4 +1,4 @@
-import { Arg, Ctx, Mutation, Resolver } from 'type-graphql'
+import { Arg, Ctx, Mutation, Query, Resolver } from 'type-graphql'
 
 import { CustomUserCreateInput, MyContext, UserLoginInput, UserMutationResponse } from '@types'
 
@@ -10,6 +10,8 @@ import { Prisma } from '@prisma/client'
 
 import { flattenErrors } from '@utils'
 
+import { COOKIE_NAME } from '@constants'
+
 // import { validate } from 'class-validator'
 
 // import { ApolloServerErrorCode } from '@apollo/server/errors'
@@ -17,6 +19,37 @@ import { flattenErrors } from '@utils'
 // Generate resolver type-graphql with prisma
 @Resolver()
 export class UserResolver {
+  @Query(_returns => UserMutationResponse)
+  async me(@Ctx() { prisma, req }: MyContext): Promise<UserMutationResponse> {
+    if (!req.session.userId)
+      return {
+        isSuccess: false,
+        status: 401,
+        message: 'Unauthenticated'
+      }
+
+    try {
+      const existingUser = await prisma.user.findUniqueOrThrow({
+        where: {
+          id: req.session.userId
+        }
+      })
+
+      return {
+        isSuccess: true,
+        status: 200,
+        user: existingUser,
+        message: 'Found user successful'
+      }
+    } catch (error) {
+      return {
+        isSuccess: false,
+        status: 500,
+        message: 'User not found'
+      }
+    }
+  }
+
   @Mutation(_returns => UserMutationResponse, {
     nullable: true
   })
@@ -97,7 +130,7 @@ export class UserResolver {
   async loginUser(
     @Arg('data')
     { username, password }: UserLoginInput,
-    @Ctx() { prisma }: MyContext
+    @Ctx() { prisma, req }: MyContext
   ): Promise<UserMutationResponse> {
     const usernameIsEmail = username.includes('@')
 
@@ -114,28 +147,31 @@ export class UserResolver {
 
       const isPasswordValid = await argon2.verify(existingUser.password, password)
 
-      if (isPasswordValid)
+      if (!isPasswordValid) {
         return {
-          isSuccess: true,
-          status: 200,
-          user: existingUser,
-          message: 'Successful'
+          isSuccess: false,
+          status: 404,
+          message: 'Authenticated failed',
+          errors: [
+            {
+              field: 'username',
+              message: 'Username or password invalid'
+            },
+            {
+              field: 'password',
+              message: 'Username or password invalid'
+            }
+          ]
         }
+      }
+
+      req.session.userId = existingUser.id
 
       return {
-        isSuccess: false,
-        status: 404,
-        message: 'Authenticated failed',
-        errors: [
-          {
-            field: 'username',
-            message: 'Username or password invalid'
-          },
-          {
-            field: 'password',
-            message: 'Username or password invalid'
-          }
-        ]
+        isSuccess: true,
+        status: 200,
+        user: existingUser,
+        message: 'Logging successful'
       }
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError) {
@@ -152,5 +188,20 @@ export class UserResolver {
         message: 'Something went wrong'
       }
     }
+  }
+
+  @Mutation(_returns => Boolean)
+  logoutUser(@Ctx() { req, res }: MyContext): Promise<boolean> {
+    return new Promise(resolve => {
+      req.session.destroy(err => {
+        res.clearCookie(COOKIE_NAME)
+
+        if (err) {
+          resolve(false)
+        }
+
+        resolve(true)
+      })
+    })
   }
 }
