@@ -6,35 +6,20 @@ import { ArgumentValidationError } from 'type-graphql'
 
 import { ApolloServerErrorCode, unwrapResolverError } from '@apollo/server/errors'
 
+import { flattenErrors, splitLastErrorLine } from '@utils'
+
 import type { ValidationError as ClassValidatorValidationError } from 'class-validator'
 
-type IValidationError = Pick<
-  ClassValidatorValidationError,
-  'property' | 'value' | 'constraints' | 'children'
->
+import { Prisma } from '@prisma/client'
 
-function formatValidationErrors(validationError: IValidationError): IValidationError {
-  return {
-    property: validationError.property,
-    ...(validationError.value && { value: validationError.value }),
-    ...(validationError.constraints && {
-      constraints: validationError.constraints
-    }),
-    ...(validationError.children &&
-      validationError.children.length !== 0 && {
-        children: validationError.children.map(child => formatValidationErrors(child))
-      })
-  }
-}
+import { FieldError } from '@types'
 
-class ValidationError extends GraphQLError {
+export class ValidationError extends GraphQLError {
   public constructor(validationErrors: ClassValidatorValidationError[]) {
     super('Validation Error', {
       extensions: {
         code: ApolloServerErrorCode.BAD_USER_INPUT,
-        validationErrors: validationErrors.map(validationError =>
-          formatValidationErrors(validationError)
-        )
+        validationErrors: flattenErrors(validationErrors)
       }
     })
 
@@ -51,6 +36,23 @@ export function classValidatorError(
   // Validation
   if (originalError instanceof ArgumentValidationError) {
     return new ValidationError(originalError.validationErrors)
+  }
+
+  if (originalError instanceof Prisma.PrismaClientKnownRequestError) {
+    // The .code property can be accessed in a type-safe manner
+    if (originalError.code === 'P2002') {
+      return new GraphQLError('Invalid argument value', {
+        extensions: {
+          code: ApolloServerErrorCode.BAD_USER_INPUT,
+          validationErrors: [
+            {
+              field: (originalError.meta?.target as any[])[0],
+              message: splitLastErrorLine(originalError.message)
+            }
+          ] as FieldError[]
+        }
+      })
+    }
   }
 
   // Generic

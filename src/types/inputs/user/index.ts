@@ -2,7 +2,7 @@ import { InputType } from 'type-graphql'
 
 import { Field } from 'type-graphql'
 
-import { IsEmail, MinLength } from 'class-validator'
+import { MinLength } from 'class-validator'
 
 import { UserCreateInput } from '@generated'
 
@@ -12,7 +12,7 @@ export class CustomUserCreateInput extends UserCreateInput {
   username!: string
 
   @Field()
-  @IsEmail()
+  // @IsEmail()
   email!: string
 
   @Field()

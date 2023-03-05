@@ -1,6 +1,6 @@
 import { Field, Int, InterfaceType, ObjectType } from 'type-graphql'
 
-import { User } from '@generated'
+import { Post, User } from '@generated'
 
 @InterfaceType()
 abstract class IMutationResponse {
@@ -21,6 +21,24 @@ export class FieldError {
 
   @Field()
   message!: string
+}
+
+@ObjectType({ implements: IMutationResponse })
+export class PostMutationResponse implements IMutationResponse {
+  @Field(_type => Int)
+  status!: number
+
+  @Field()
+  isSuccess!: boolean
+
+  @Field()
+  message?: string
+
+  @Field({ nullable: true })
+  post?: Post
+
+  @Field(_type => [FieldError], { nullable: true })
+  errors?: FieldError[]
 }
 
 @ObjectType({ implements: IMutationResponse })

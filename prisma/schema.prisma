@@ -5,7 +5,8 @@ generator client {
 generator typegraphql {
   provider        = "typegraphql-prisma"
   output          = "../prisma/generated/type-graphql"
-  /// emitTranspiledCode = true
+  // emitTranspiledCode = true
+  //  emitOnly = "models,inputs" ==> accepts a string list of values: enums, models, crudResolvers, relationResolvers, inputs or outputs
   useSimpleInputs = true
   simpleResolvers = true
 }
@@ -20,7 +21,6 @@ datasource db {
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique
-  /// @Validator.@IsEmail()
   email     String   @unique
   /// @TypeGraphQL.omit(output: true, input: ["where", "orderBy"])
   password  String

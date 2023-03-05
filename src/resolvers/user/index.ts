@@ -1,10 +1,10 @@
-import { Arg, Ctx, Mutation, Query, Resolver } from 'type-graphql'
+import { Arg, Authorized, Ctx, Mutation, Query, Resolver, UseMiddleware } from 'type-graphql'
 
 import { CustomUserCreateInput, MyContext, UserLoginInput, UserMutationResponse } from '@types'
 
 import argon2 from 'argon2'
 
-import { validate } from 'class-validator'
+import { IsEmail, MinLength, ValidateNested, validate } from 'class-validator'
 
 import { Prisma } from '@prisma/client'
 
@@ -12,26 +12,83 @@ import { flattenErrors } from '@utils'
 
 import { COOKIE_NAME } from '@constants'
 
+import {
+  applyArgsTypesEnhanceMap,
+  applyInputTypesEnhanceMap,
+  applyModelsEnhanceMap,
+  applyResolversEnhanceMap
+} from '@generated'
+
 // import { validate } from 'class-validator'
 
 // import { ApolloServerErrorCode } from '@apollo/server/errors'
 
-// Generate resolver type-graphql with prisma
+applyResolversEnhanceMap({
+  User: {
+    _all: [
+      UseMiddleware(({ info }, next) => {
+        console.log(`Query "${info.fieldName}" accessed`)
+
+        return next()
+      })
+    ],
+    createOneUser: [
+      Authorized(),
+      UseMiddleware(async ({ info }, next) => {
+        try {
+          return await next()
+        } catch (error) {
+          throw error
+        }
+      })
+    ]
+  }
+})
+
+applyModelsEnhanceMap({
+  User: {
+    fields: {
+      email: [IsEmail()]
+    }
+  }
+})
+
+applyArgsTypesEnhanceMap({
+  CreateOneUserArgs: {
+    fields: {
+      data: [ValidateNested()]
+    }
+  }
+})
+
+applyInputTypesEnhanceMap({
+  UserCreateInput: {
+    fields: {
+      email: [IsEmail()],
+      password: [MinLength(8)]
+    }
+  }
+})
+
 @Resolver()
 export class UserResolver {
-  @Query(_returns => UserMutationResponse)
+  @Authorized()
+  @Query(_return => UserMutationResponse)
   async me(@Ctx() { prisma, req }: MyContext): Promise<UserMutationResponse> {
-    if (!req.session.userId)
-      return {
-        isSuccess: false,
-        status: 401,
-        message: 'Unauthenticated'
-      }
-
     try {
       const existingUser = await prisma.user.findUniqueOrThrow({
         where: {
           id: req.session.userId
+        },
+        include: {
+          _count: true,
+          Post: {
+            where: {
+              id: {
+                equals: 1
+              }
+            }
+          }
         }
       })
 
@@ -50,7 +107,7 @@ export class UserResolver {
     }
   }
 
-  @Mutation(_returns => UserMutationResponse, {
+  @Mutation(_return => UserMutationResponse, {
     nullable: true
   })
   async createNewUser(
@@ -190,7 +247,7 @@ export class UserResolver {
     }
   }
 
-  @Mutation(_returns => Boolean)
+  @Mutation(_return => Boolean)
   logoutUser(@Ctx() { req, res }: MyContext): Promise<boolean> {
     return new Promise(resolve => {
       req.session.destroy(err => {
@@ -198,6 +255,8 @@ export class UserResolver {
 
         if (err) {
           resolve(false)
+
+          return
         }
 
         resolve(true)

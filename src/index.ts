@@ -20,15 +20,17 @@ import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHt
 
 import { expressMiddleware } from '@apollo/server/express4'
 
-import { prismaClient, redisStore } from '@utils'
+import { classValidatorError, prismaClient, redisStore } from '@utils'
 
 import { resolvers } from '@generated'
 
-import { UserResolver } from '@resolvers'
+import { PostResolver, UserResolver } from '@resolvers'
 
 import session from 'express-session'
 
 import { COOKIE_NAME, COOKIE_SECRET, PORT, __prod__ } from '@constants'
+
+import { authChecker } from '@middlewares'
 
 dotenv.config({ allowEmptyValues: true })
 
@@ -45,12 +47,13 @@ const main = async () => {
       name: COOKIE_NAME,
       store: redisStore,
       cookie: {
-        maxAge: 1000 * 60 * 60 * 24, //1 day
+        maxAge: 1000 * 60 * 60, //1 hour
         httpOnly: true,
         sameSite: 'lax',
         secure: __prod__
       },
-      resave: false, // required: force lightweight session keep alive (touch)
+      rolling: true,
+      resave: true, // required: force lightweight session keep alive (touch)
       saveUninitialized: false, // recommended: only save session when data exists
       secret: COOKIE_SECRET
     })
@@ -58,10 +61,12 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [...resolvers, UserResolver],
-      validate: false
+      resolvers: [...resolvers, UserResolver, PostResolver],
+      emitSchemaFile: true,
+      authChecker,
+      validate: { forbidUnknownValues: false }
     }),
-    // formatError: classValidatorError,
+    formatError: classValidatorError,
     plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
     introspection: !__prod__,
     includeStacktraceInErrorResponses: !__prod__
@@ -72,8 +77,7 @@ const main = async () => {
   app.use(
     '/graphql',
     cors<cors.CorsRequest>({
-      credentials: true,
-      origin: '*'
+      credentials: true
     }),
     bodyParser.json(),
     expressMiddleware(apolloServer, {

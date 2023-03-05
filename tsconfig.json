@@ -42,7 +42,8 @@
       "@resolvers": ["src/resolvers"],
       "@types": ["src/types"],
       "@generated": ["prisma/generated/type-graphql"],
-      "@constants": ["src/constants"]
+      "@constants": ["src/constants"],
+      "@middlewares": ["src/middlewares"]
     } /* Specify a set of entries that re-map imports to additional lookup locations. */,
     // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
     // "typeRoots": [] /* Specify multiple folders that act like './node_modules/@types'. */,
