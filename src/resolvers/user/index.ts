@@ -1,23 +1,27 @@
 import { Arg, Authorized, Ctx, Mutation, Query, Resolver, UseMiddleware } from 'type-graphql'
 
-import { CustomUserCreateInput, MyContext, UserLoginInput, UserMutationResponse } from '@types'
+import { MyContext, UserLoginInput } from '@types'
 
 import argon2 from 'argon2'
 
-import { IsEmail, MinLength, ValidateNested, validate } from 'class-validator'
+import { IsEmail, MinLength, ValidateNested } from 'class-validator'
 
-import { Prisma } from '@prisma/client'
+import { customClassValidatorError, ValidationError } from '@utils'
 
-import { flattenErrors } from '@utils'
-
-import { COOKIE_NAME } from '@constants'
+import { COOKIE_NAME, INTERNAL_SERVER_ERROR, USER_EXISTED, USER_NOT_FOUND } from '@constants'
 
 import {
   applyArgsTypesEnhanceMap,
   applyInputTypesEnhanceMap,
   applyModelsEnhanceMap,
-  applyResolversEnhanceMap
+  applyResolversEnhanceMap,
+  User,
+  UserCreateInput
 } from '@generated'
+
+import { ApolloServerErrorCode } from '@apollo/server/errors'
+
+import { GraphQLFormattedError } from 'graphql'
 
 // import { validate } from 'class-validator'
 
@@ -73,65 +77,30 @@ applyInputTypesEnhanceMap({
 @Resolver()
 export class UserResolver {
   @Authorized()
-  @Query(_return => UserMutationResponse)
-  async me(@Ctx() { prisma, req }: MyContext): Promise<UserMutationResponse> {
+  @Query(_return => User)
+  async me(@Ctx() { prisma, req }: MyContext): Promise<User | ValidationError> {
     try {
-      const existingUser = await prisma.user.findUniqueOrThrow({
+      return await prisma.user.findUniqueOrThrow({
         where: {
           id: req.session.userId
         },
         include: {
-          _count: true,
-          Post: {
-            where: {
-              id: {
-                equals: 1
-              }
-            }
-          }
+          _count: true
         }
       })
-
-      return {
-        isSuccess: true,
-        status: 200,
-        user: existingUser,
-        message: 'Found user successful'
-      }
     } catch (error) {
-      return {
-        isSuccess: false,
-        status: 500,
-        message: 'User not found'
-      }
+      return new ValidationError('No user found', 'USER_NOT_FOUND')
     }
   }
 
-  @Mutation(_return => UserMutationResponse, {
+  @Mutation(_return => User, {
     nullable: true
   })
   async createNewUser(
-    // @Arg('data', { validate: true })
     @Arg('data')
-    newUserData: CustomUserCreateInput,
+    newUserData: UserCreateInput,
     @Ctx() { prisma }: MyContext
-  ): Promise<UserMutationResponse> {
-    // Validate input data
-    const errors = await validate(newUserData, {
-      validationError: {
-        target: false
-      }
-    })
-
-    if (errors.length > 0) {
-      return {
-        isSuccess: false,
-        status: 400,
-        message: 'Validation failed!',
-        errors: flattenErrors(errors)
-      }
-    }
-
+  ): Promise<User | ValidationError | null> {
     try {
       const existingUser = await prisma.user.findFirst({
         where: {
@@ -151,44 +120,34 @@ export class UserResolver {
       })
 
       if (existingUser !== null)
-        return {
-          isSuccess: false,
-          status: 409,
-          message: 'User existed!',
-          errors: [
-            {
-              field: existingUser.username === newUserData.username ? 'username' : 'email',
-              message: `${
-                existingUser.username === newUserData.username ? 'Username' : 'Email'
-              } already taken`
-            }
-          ]
-        }
+        return new ValidationError('User existed', USER_EXISTED, undefined, [
+          {
+            field: existingUser.username === newUserData.username ? 'username' : 'email',
+            message: `${
+              existingUser.username === newUserData.username ? 'Username' : 'Email'
+            } already taken`
+          }
+        ])
 
       const hashedPassword = await argon2.hash(newUserData.password)
 
-      return {
-        isSuccess: true,
-        status: 200,
-        message: 'Create User Successful',
-        user: await prisma.user.create({
-          data: {
-            ...newUserData,
-            password: hashedPassword
-          }
-        })
-      }
-    } catch (error) {
-      throw error
+      return await prisma.user.create({
+        data: {
+          ...newUserData,
+          password: hashedPassword
+        }
+      })
+    } catch (e) {
+      return new ValidationError('Internal server error', INTERNAL_SERVER_ERROR)
     }
   }
 
-  @Mutation(_return => UserMutationResponse)
+  @Mutation(_return => User, { nullable: true })
   async loginUser(
     @Arg('data')
     { username, password }: UserLoginInput,
     @Ctx() { prisma, req }: MyContext
-  ): Promise<UserMutationResponse> {
+  ): Promise<User | GraphQLFormattedError> {
     const usernameIsEmail = username.includes('@')
 
     try {
@@ -205,11 +164,11 @@ export class UserResolver {
       const isPasswordValid = await argon2.verify(existingUser.password, password)
 
       if (!isPasswordValid) {
-        return {
-          isSuccess: false,
-          status: 404,
-          message: 'Authenticated failed',
-          errors: [
+        return new ValidationError(
+          'Authenticated failed',
+          ApolloServerErrorCode.BAD_USER_INPUT,
+          undefined,
+          [
             {
               field: 'username',
               message: 'Username or password invalid'
@@ -219,31 +178,16 @@ export class UserResolver {
               message: 'Username or password invalid'
             }
           ]
-        }
+        )
       }
 
       req.session.userId = existingUser.id
 
-      return {
-        isSuccess: true,
-        status: 200,
-        user: existingUser,
-        message: 'Logging successful'
-      }
+      return existingUser
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError) {
-        return {
-          isSuccess: false,
-          status: 500,
-          message: e.message
-        }
-      }
+      const error = customClassValidatorError(e)
 
-      return {
-        isSuccess: false,
-        status: 500,
-        message: 'Something went wrong'
-      }
+      return error ? error : new ValidationError('User not found', USER_NOT_FOUND)
     }
   }
 

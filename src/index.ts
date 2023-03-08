@@ -61,7 +61,7 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [...resolvers, UserResolver, PostResolver],
+      resolvers: [...resolvers, PostResolver, UserResolver],
       emitSchemaFile: true,
       authChecker,
       validate: { forbidUnknownValues: false }
@@ -77,6 +77,7 @@ const main = async () => {
   app.use(
     '/graphql',
     cors<cors.CorsRequest>({
+      origin: ['http://localhost:3000'],
       credentials: true
     }),
     bodyParser.json(),

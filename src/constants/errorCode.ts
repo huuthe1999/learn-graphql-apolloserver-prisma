@@ -1,0 +1,14 @@
+// Error Postimport { Post } from '@generated';
+
+//DEFAULT
+export const RECORD_NOT_FOUND = 'RECORD_NOT_FOUND'
+export const INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR'
+
+//POST
+export const POST_NOT_FOUND = 'POST_NOT_FOUND'
+export const CREATE_POST_FAILED = 'CREATE_POST_FAILED'
+
+// USER
+export const USER_NOT_FOUND = 'USER_NOT_FOUND'
+export const USER_EXISTED = 'USER_EXISTED'
+export const CREATE_USER_FAILED = 'CREATE_USER_FAILED'

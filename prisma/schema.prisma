@@ -5,10 +5,8 @@ generator client {
 generator typegraphql {
   provider        = "typegraphql-prisma"
   output          = "../prisma/generated/type-graphql"
-  // emitTranspiledCode = true
-  //  emitOnly = "models,inputs" ==> accepts a string list of values: enums, models, crudResolvers, relationResolvers, inputs or outputs
-  useSimpleInputs = true
-  simpleResolvers = true
+  useSimpleInputs = "true"
+  simpleResolvers = "true"
 }
 
 datasource db {
@@ -16,8 +14,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// The available options are: "create","update", "where" and "orderBy" for @TypeGraphQL.omit
-//Example @TypeGraphQL.omit(input: ["update", "where", "orderBy"])
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique

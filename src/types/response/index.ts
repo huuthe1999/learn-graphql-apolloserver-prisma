@@ -3,7 +3,7 @@ import { Field, Int, InterfaceType, ObjectType } from 'type-graphql'
 import { Post, User } from '@generated'
 
 @InterfaceType()
-abstract class IMutationResponse {
+export abstract class IMutationResponse {
   @Field(_type => Int)
   status!: number
 
@@ -46,7 +46,7 @@ export class UserMutationResponse implements IMutationResponse {
   @Field(_type => Int)
   status!: number
 
-  @Field()
+  @Field(_type => Boolean)
   isSuccess!: boolean
 
   @Field()

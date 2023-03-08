@@ -36,15 +36,6 @@ input BoolWithAggregatesFilter {
   not: NestedBoolWithAggregatesFilter
 }
 
-input CustomUserCreateInput {
-  Post: PostCreateNestedManyWithoutAuthorInput
-  createdAt: DateTime
-  email: String!
-  password: String!
-  updatedAt: DateTime
-  username: String!
-}
-
 """
 The javascript `Date` as string. Type represents date and time as the ISO Date string.
 """
@@ -117,14 +108,14 @@ type Mutation {
   createManyPost(data: [PostCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
   createManyUser(data: [UserCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
   createNewPost(data: PostCreateInput!): PostMutationResponse!
-  createNewUser(data: CustomUserCreateInput!): UserMutationResponse
+  createNewUser(data: UserCreateInput!): User
   createOnePost(data: PostCreateInput!): Post!
   createOneUser(data: UserCreateInput!): User!
   deleteManyPost(where: PostWhereInput): AffectedRowsOutput!
   deleteManyUser(where: UserWhereInput): AffectedRowsOutput!
   deleteOnePost(where: PostWhereUniqueInput!): Post
   deleteOneUser(where: UserWhereUniqueInput!): User
-  loginUser(data: UserLoginInput!): UserMutationResponse!
+  loginUser(data: UserLoginInput!): User
   logoutUser: Boolean!
   updateManyPost(data: PostUpdateManyMutationInput!, where: PostWhereInput): AffectedRowsOutput!
   updateManyUser(data: UserUpdateManyMutationInput!, where: UserWhereInput): AffectedRowsOutput!
@@ -502,7 +493,7 @@ type Query {
   getUser(where: UserWhereUniqueInput!): User
   groupByPost(by: [PostScalarFieldEnum!]!, having: PostScalarWhereWithAggregatesInput, orderBy: [PostOrderByWithAggregationInput!], skip: Int, take: Int, where: PostWhereInput): [PostGroupBy!]!
   groupByUser(by: [UserScalarFieldEnum!]!, having: UserScalarWhereWithAggregatesInput, orderBy: [UserOrderByWithAggregationInput!], skip: Int, take: Int, where: UserWhereInput): [UserGroupBy!]!
-  me: UserMutationResponse!
+  me: User!
   post(where: PostWhereUniqueInput!): Post
   posts(cursor: PostWhereUniqueInput, distinct: [PostScalarFieldEnum!], orderBy: [PostOrderByWithRelationInput!], skip: Int, take: Int, where: PostWhereInput): [Post!]!
   user(where: UserWhereUniqueInput!): User
@@ -680,14 +671,6 @@ input UserMinOrderByAggregateInput {
   id: SortOrder
   updatedAt: SortOrder
   username: SortOrder
-}
-
-type UserMutationResponse implements IMutationResponse {
-  errors: [FieldError!]
-  isSuccess: Boolean!
-  message: String!
-  status: Int!
-  user: User
 }
 
 input UserOrderByWithAggregationInput {

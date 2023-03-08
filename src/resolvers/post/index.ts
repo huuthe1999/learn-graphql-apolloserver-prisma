@@ -2,18 +2,83 @@ import { Arg, Authorized, Ctx, Mutation, Resolver, UseMiddleware } from 'type-gr
 
 import { MyContext, PostMutationResponse } from '@types'
 
-import { PostCreateInput, applyResolversEnhanceMap } from '@generated'
+import {
+  applyArgsTypesEnhanceMap,
+  applyInputTypesEnhanceMap,
+  applyResolversEnhanceMap,
+  PostCreateInput
+} from '@generated'
+
+import { IsInt, IsNotEmpty, IsNotEmptyObject, ValidateNested } from 'class-validator'
+
+import { customClassValidatorError, ValidationError } from '@utils'
+
+import { CREATE_POST_FAILED, POST_NOT_FOUND } from '@constants'
 
 applyResolversEnhanceMap({
   Post: {
     _all: [
+      Authorized(),
       UseMiddleware(({ info }, next) => {
         console.log(`Query "${info.fieldName}" accessed`)
 
         return next()
       })
     ],
-    createOnePost: [Authorized()]
+    createOnePost: [
+      UseMiddleware(async (_, next) => {
+        try {
+          return await next()
+        } catch (err) {
+          const error = customClassValidatorError(err)
+
+          return error ? error : new ValidationError('Failed to create post', CREATE_POST_FAILED)
+        }
+      })
+    ],
+    deleteOnePost: [
+      UseMiddleware(async (_, next) => {
+        try {
+          return await next()
+        } catch (err) {
+          // throw new GraphQLError('Post not found', {
+          //   extensions: {
+          //     code: POST_NOT_FOUND
+          //   }
+          // })
+
+          const error = customClassValidatorError(err)
+
+          return error ? error : new ValidationError('Post not found', POST_NOT_FOUND)
+        }
+      })
+    ]
+  }
+})
+
+applyArgsTypesEnhanceMap({
+  CreateOnePostArgs: {
+    fields: {
+      data: [ValidateNested(), IsNotEmptyObject()]
+    }
+  },
+  DeleteOnePostArgs: {
+    fields: {
+      _all: [ValidateNested()]
+    }
+  }
+})
+
+applyInputTypesEnhanceMap({
+  PostCreateInput: {
+    fields: {
+      title: [IsNotEmpty()]
+    }
+  },
+  PostWhereUniqueInput: {
+    fields: {
+      id: [IsInt()]
+    }
   }
 })
 
